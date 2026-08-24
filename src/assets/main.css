@@ -1,0 +1,390 @@
+:root {
+  /* Color Palette - Serene Emerald & Sacred Gold */
+  --primary-emerald: #0F392B;
+  --primary-sage: #1E5645;
+  --primary-emerald-hover: #0a291f;
+  --primary-light: #E8F3EE;
+  
+  --accent-gold: #D4AF37;
+  --accent-gold-hover: #C09B25;
+  --accent-gold-light: #FDF8E8;
+  --accent-gold-glow: rgba(212, 175, 55, 0.25);
+  
+  --bg-sand: #FAF7F2;
+  --bg-card: #FFFFFF;
+  --bg-card-hover: #FDFBF7;
+  
+  --text-main: #1C2421;
+  --text-secondary: #4B5563;
+  --text-muted: #71807B;
+  
+  --border-color: #E2E8F0;
+  --border-gold: rgba(212, 175, 55, 0.3);
+  
+  --shadow-sm: 0 2px 8px rgba(15, 57, 43, 0.05);
+  --shadow-md: 0 8px 24px rgba(15, 57, 43, 0.08);
+  --shadow-lg: 0 16px 40px rgba(15, 57, 43, 0.12);
+  --shadow-gold: 0 8px 25px rgba(212, 175, 55, 0.2);
+  
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 24px;
+  --radius-full: 9999px;
+  
+  --font-ui: 'Tajawal', system-ui, -apple-system, sans-serif;
+  --font-heading: 'Amiri', serif;
+
+  /* Motion Timing & Easing Tokens */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-fast: 200ms;
+  --duration-medium: 350ms;
+  --duration-slow: 500ms;
+}
+
+/* Dark Mode Variables */
+[data-theme="dark"] {
+  --primary-emerald: #144937;
+  --primary-sage: #1D614E;
+  --primary-light: #162E25;
+  
+  --bg-sand: #0B120F;
+  --bg-card: #121D18;
+  --bg-card-hover: #182721;
+  
+  --text-main: #F3F6F4;
+  --text-secondary: #D1D9D5;
+  --text-muted: #8E9E98;
+  
+  --border-color: #1F3029;
+  --border-gold: rgba(212, 175, 55, 0.4);
+}
+
+/* Global Reset & Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  font-family: var(--font-ui);
+  background-color: var(--bg-sand);
+  color: var(--text-main);
+  direction: rtl;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.6;
+  background-color: var(--bg-sand);
+  color: var(--text-main);
+  overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+#app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Typography */
+h1, h2, h3, .font-heading {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  color: var(--primary-emerald);
+}
+
+[data-theme="dark"] h1, 
+[data-theme="dark"] h2, 
+[data-theme="dark"] h3 {
+  color: var(--accent-gold);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Subtle Islamic Background Grid Pattern */
+.bg-pattern {
+  background-image: radial-gradient(var(--border-gold) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* Glassmorphism Card */
+.glass-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-md);
+  transition: transform var(--duration-fast) var(--ease-in-out-smooth),
+              box-shadow var(--duration-fast) var(--ease-in-out-smooth),
+              border-color var(--duration-fast) var(--ease-in-out-smooth),
+              background-color var(--duration-fast) var(--ease-in-out-smooth);
+  will-change: transform, box-shadow;
+}
+
+.glass-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-gold);
+  transform: translateY(-4px);
+}
+
+/* Gold Gradient Text */
+.gold-gradient-text {
+  background: linear-gradient(135deg, var(--accent-gold) 0%, #F5D77F 50%, var(--accent-gold) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Emerald Hero Gradient */
+.hero-gradient {
+  background: linear-gradient(135deg, var(--primary-emerald) 0%, var(--primary-sage) 60%, #174032 100%);
+  color: #FFFFFF;
+}
+
+/* Custom Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 22px;
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 0.95rem;
+  border-radius: var(--radius-full);
+  border: none;
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-in-out-smooth),
+              background-color var(--duration-fast) var(--ease-in-out-smooth),
+              box-shadow var(--duration-fast) var(--ease-in-out-smooth),
+              color var(--duration-fast) var(--ease-in-out-smooth);
+  user-select: none;
+  will-change: transform;
+}
+
+.btn-gold {
+  background: linear-gradient(135deg, var(--accent-gold) 0%, #C09B25 100%);
+  color: #0F392B;
+  box-shadow: var(--shadow-gold);
+}
+
+.btn-gold:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(212, 175, 55, 0.35);
+  background: linear-gradient(135deg, #E2BD44 0%, var(--accent-gold) 100%);
+}
+
+.btn-emerald {
+  background: var(--primary-emerald);
+  color: #FFFFFF;
+}
+
+.btn-emerald:hover {
+  background: var(--primary-sage);
+  transform: translateY(-2px);
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+}
+
+.btn-outline:hover {
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
+  background: var(--accent-gold-light);
+}
+
+[data-theme="dark"] .btn-outline:hover {
+  background: rgba(212, 175, 55, 0.1);
+}
+
+.btn-icon {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+/* Category Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.badge-fiqh { background: #E8F5E9; color: #2E7D32; border: 1px solid #C8E6C9; }
+.badge-hadith { background: #FFF3E0; color: #E65100; border: 1px solid #FFE0B2; }
+.badge-tafsir { background: #E3F2FD; color: #1565C0; border: 1px solid #BBDEFB; }
+.badge-tawheed { background: #F3E5F5; color: #7B1FA2; border: 1px solid #E1BEE7; }
+
+[data-theme="dark"] .badge-fiqh { background: rgba(46, 125, 50, 0.2); color: #81C784; }
+[data-theme="dark"] .badge-hadith { background: rgba(230, 81, 0, 0.2); color: #FFB74D; }
+[data-theme="dark"] .badge-tafsir { background: rgba(21, 101, 192, 0.2); color: #64B5F6; }
+[data-theme="dark"] .badge-tawheed { background: rgba(123, 31, 162, 0.2); color: #BA68C8; }
+
+/* Custom Range Input (Slider) */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 4px;
+  background: var(--border-color);
+  outline: none;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent-gold);
+  border: 2px solid #FFFFFF;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+/* ==========================================================================
+   ANIMATIONS & MOTION SYSTEM
+   ========================================================================== */
+
+/* 1. Keyframes Definition */
+@keyframes heroFadeUp {
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes heartPop {
+  0% { transform: scale(0.8); }
+  50% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+
+@keyframes floatGentle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+/* Stagger Delays */
+.hero-stagger {
+  opacity: 0;
+  animation: heroFadeUp var(--duration-slow) var(--ease-out-expo) forwards;
+}
+
+.delay-1 { animation-delay: 80ms; }
+.delay-2 { animation-delay: 160ms; }
+.delay-3 { animation-delay: 240ms; }
+.delay-4 { animation-delay: 320ms; }
+
+/* 2. Scroll Reveal Directive Styles */
+.scroll-reveal-init {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity var(--duration-medium) var(--ease-out-expo),
+              transform var(--duration-medium) var(--ease-out-expo);
+  will-change: opacity, transform;
+}
+
+.scroll-reveal-init.is-revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 3. Vue Page Fade Route Transition (<router-view>) */
+.page-fade-enter-active,
+.page-fade-leave-active {
+  transition: opacity 250ms var(--ease-out-expo), transform 250ms var(--ease-out-expo);
+}
+
+.page-fade-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.page-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+/* 4. Modal Scale Transition (SearchBar.vue) */
+.modal-scale-enter-active,
+.modal-scale-leave-active {
+  transition: opacity var(--duration-fast) var(--ease-out-expo),
+              transform var(--duration-fast) var(--ease-out-expo);
+}
+
+.modal-scale-enter-from,
+.modal-scale-leave-to {
+  opacity: 0;
+  transform: scale(0.96) translateY(-10px);
+}
+
+/* Container Utilities */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-sand);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--primary-sage);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-gold);
+}
+
+/* 5. Accessibility: Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .scroll-reveal-init {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .hero-stagger {
+    opacity: 1 !important;
+    animation: none !important;
+  }
+}
