@@ -51,7 +51,7 @@
       <div class="hero-avatar-card hero-stagger delay-4">
         <div class="avatar-frame">
           <div class="avatar-placeholder font-heading">
-            الشيخ الشنقيطي
+            الشيخ عمر العربي
           </div>
         </div>
         <div class="sheikh-card-meta">

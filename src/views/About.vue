@@ -6,7 +6,7 @@
       <div class="about-hero hero-gradient">
         <div class="avatar-frame">
           <div class="avatar-placeholder font-heading">
-            الشيخ الشنقيطي
+            الشيخ عمر العربي
           </div>
         </div>
 
