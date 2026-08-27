@@ -24,8 +24,8 @@ export const sheikhInfo = {
     "كتاب التوحيد وحقيقة الإيمان والاعتقاد"
   ],
   socials: {
-    youtube: "https://youtube.com",
-    telegram: "https://telegram.org",
+    youtube: "https://www.youtube.com/channel/UCFhHh9-lsLKolez3pKnGC0w",
+    telegram: "https://t.me/omar_elarby",
     twitter: "https://x.com",
     whatsapp: "https://whatsapp.com"
   }

@@ -59,15 +59,13 @@
         <h4 class="footer-title">تواصل ومتابعة</h4>
         <p class="social-text">تابع جديد الدروس والمحاضرات عبر المنصات التالية:</p>
         <div class="social-icons">
-          <a href="#" class="social-btn" title="يوتيوب">
+          <a href="https://youtube.com/channel/UCFhHh9-lsLKolez3pKnGC0w?si=igS9oLARFFUUh5w9" target="_blank" class="social-btn" title="يوتيوب">
             <Youtube :size="18" :stroke-width="2" />
           </a>
-          <a href="#" class="social-btn" title="تيليجرام">
+          <a href="https://t.me/omar_elarby" target="_blank" class="social-btn" title="تيليجرام">
             <Send :size="18" :stroke-width="2" />
           </a>
-          <a href="#" class="social-btn" title="تويتر">
-            <Twitter :size="18" :stroke-width="2" />
-          </a>
+          
           <a href="#" class="social-btn" title="واتساب">
             <MessageCircle :size="18" :stroke-width="2" />
           </a>
