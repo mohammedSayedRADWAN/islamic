@@ -1,3 +1,7 @@
+import audio1 from '../assets/audio/1.mp3';
+import audio2 from '../assets/audio/2.mp3';
+import audio3 from '../assets/audio/3.mp3';
+
 export const sheikhInfo = {
   name: "الشيخ د. عمر  العربي",
   title: "أستاذ الفقه والسياسة الشرعية",
@@ -81,7 +85,7 @@ export const lessons = [
     duration: "45:30",
     date: "2026-08-20",
     description: "يتناول الشيخ في هذا الدرس بيان أقسام المياه (الطهور والنجس)، وضوابط التطهير، وأهم المسائل الفقهية المتعلقة بالبحر والبئر والماء المستعمل.",
-    audioUrl: "https://download.quranicaudio.com/quran/mishaari_raashid_al_afasy/001.mp3",
+    audioUrl: audio1,
     featured: true
   },
   {
@@ -94,7 +98,7 @@ export const lessons = [
     duration: "38:15",
     date: "2026-08-18",
     description: "شرح تفصيلي لأركان الصلاة الـ14، والفرق بين الركن والواجب والشرط، وسجود السهو ومواضعه من الكتاب والسنة.",
-    audioUrl: "https://download.quranicaudio.com/quran/mishaari_raashid_al_afasy/002.mp3",
+    audioUrl: audio2,
     featured: false
   },
   {
@@ -107,7 +111,7 @@ export const lessons = [
     duration: "42:00",
     date: "2026-08-15",
     description: "بيان النصاب الشرعي في أموال التجارة والنقود، وشروط وجوب الزكاة ومصارف الأصناف الثمانية المذكورة في سورة التوبة.",
-    audioUrl: "https://download.quranicaudio.com/quran/mishaari_raashid_al_afasy/003.mp3",
+    audioUrl: audio3,
     featured: false
   },
   {

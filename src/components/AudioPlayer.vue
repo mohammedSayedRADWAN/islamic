@@ -161,7 +161,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { 
   Play, 
   Pause, 
@@ -193,6 +193,12 @@ const {
 
 const isExpanded = ref(true);
 const previousVolume = ref(1);
+
+watch(currentLesson, (newLesson) => {
+  if (newLesson) {
+    isExpanded.value = true;
+  }
+});
 
 const toggleExpand = () => {
   isExpanded.value = !isExpanded.value;
