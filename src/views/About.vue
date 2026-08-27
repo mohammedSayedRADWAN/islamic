@@ -5,9 +5,7 @@
       <!-- Sheikh Hero Card -->
       <div class="about-hero hero-gradient">
         <div class="avatar-frame">
-          <div class="avatar-placeholder font-heading">
-            الشيخ عمر العربي
-          </div>
+          <img :src="avatarImg" alt="الشيخ د. عمر العربي" class="avatar-img" />
         </div>
 
         <div class="sheikh-info-col">
@@ -67,6 +65,7 @@
       <!-- Teaching Methodology Banner -->
       <div class="methodology-card glass-card">
         <h3 class="card-title font-heading">
+          <Sparkles :size="22" :stroke-width="2" class="title-icon" />
           <span>منهج الشيخ في التدريس والتعليم</span>
         </h3>
         <p class="method-text">
@@ -81,6 +80,7 @@
 <script setup>
 import { Youtube, Send, Twitter, GraduationCap, BookOpen, Check, Sparkles } from 'lucide-vue-next';
 import { sheikhInfo } from '../data/staticData';
+import avatarImg from '../assets/portofolio.jpeg';
 </script>
 
 <style scoped>
@@ -109,18 +109,12 @@ import { sheikhInfo } from '../data/staticData';
   flex-shrink: 0;
 }
 
-.avatar-placeholder {
+.avatar-img {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background: linear-gradient(135deg, #0F392B 0%, #1E5645 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--accent-gold);
-  font-size: 1.5rem;
-  font-weight: 700;
-  text-align: center;
+  object-fit: cover;
+  display: block;
 }
 
 .sheikh-info-col {

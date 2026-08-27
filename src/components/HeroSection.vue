@@ -50,9 +50,7 @@
       <!-- Sheikh Profile Card -->
       <div class="hero-avatar-card hero-stagger delay-4">
         <div class="avatar-frame">
-          <div class="avatar-placeholder font-heading">
-            الشيخ عمر العربي
-          </div>
+          <img :src="avatarImg" alt="الشيخ د. عمر العربي" class="avatar-img" />
         </div>
         <div class="sheikh-card-meta">
           <h3 class="sheikh-name">{{ sheikhInfo.name }}</h3>
@@ -66,6 +64,7 @@
 <script setup>
 import { Sparkles, Headphones, BookOpen } from 'lucide-vue-next';
 import { sheikhInfo } from '../data/staticData';
+import avatarImg from '../assets/portofolio.jpeg';
 </script>
 
 <style scoped>
@@ -187,17 +186,12 @@ import { sheikhInfo } from '../data/staticData';
   box-shadow: var(--shadow-gold);
 }
 
-.avatar-placeholder {
+.avatar-img {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background: linear-gradient(135deg, #0F392B 0%, #1E5645 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--accent-gold);
-  font-size: 1.4rem;
-  font-weight: 700;
+  object-fit: cover;
+  display: block;
 }
 
 .sheikh-name {
