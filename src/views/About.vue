@@ -67,7 +67,6 @@
       <!-- Teaching Methodology Banner -->
       <div class="methodology-card glass-card">
         <h3 class="card-title font-heading">
-          <Sparkles :size="22" :stroke-width="2" class="title-icon" />
           <span>منهج الشيخ في التدريس والتعليم</span>
         </h3>
         <p class="method-text">
