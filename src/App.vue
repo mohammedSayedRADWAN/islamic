@@ -30,12 +30,14 @@ import Footer from './components/Footer.vue';
 import AudioPlayer from './components/AudioPlayer.vue';
 import SearchBar from './components/SearchBar.vue';
 import { useTheme } from './composables/useTheme';
+import { loadContent } from './services/contentStore';
 
 const isSearchOpen = ref(false);
 const { initTheme } = useTheme();
 
 onMounted(() => {
   initTheme();
+  loadContent();
 });
 </script>
 
