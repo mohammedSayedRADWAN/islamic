@@ -1,154 +1,147 @@
-# Front-End to Database Entity Mapping
+# Front-End to MongoDB Entity & Query Mapping
 
-This document maps every front-end feature, page, and component to the database tables and fields they require.
-
----
-
-## Page-Level Mapping
-
-### Home Page (`/` — `Home.vue`)
-
-| Section | Component | Required Tables | Key Fields | Query Pattern |
-|---|---|---|---|---|
-| Hero Section | `HeroSection.vue` | `sheikhs` | `name`, `title`, `avatar_url`, `total_audio_hours` | `SELECT * FROM sheikhs LIMIT 1` |
-| Hero Stats | `HeroSection.vue` | `sheikhs`, `categories`, `lessons` | Aggregate: `COUNT(lessons)`, `COUNT(categories)` | `SELECT COUNT(*) FROM lessons; SELECT COUNT(*) FROM categories` |
-| Categories Grid | `CategoryCard.vue` | `categories` | `id`, `name`, `slug`, `description`, `icon`, `color` | `SELECT * FROM categories ORDER BY sort_order` |
-| Categories Count | `CategoryCard.vue` | `lessons` | `COUNT(*) GROUP BY category_id` | Subquery or JOIN for lesson count per category |
-| Featured Lesson | `FeaturedLesson.vue` | `lessons`, `categories` | `title`, `description`, `duration`, `audio_url`, `is_featured`, `lesson_number`, category `name` | `SELECT l.*, c.name FROM lessons l JOIN categories c ON l.category_id = c.id WHERE l.is_featured = TRUE ORDER BY l.published_date DESC LIMIT 1` |
-| Latest Lessons | `LessonCard.vue` | `lessons`, `categories`, `bookmarks` | All lesson fields, category `name`, bookmark status | `SELECT l.*, c.name FROM lessons l JOIN categories c ON l.category_id = c.id ORDER BY l.published_date DESC LIMIT 6` |
-| Quote Banner | (static) | None | — | Hardcoded content, no DB needed |
+This document maps the Vue 3 frontend components, routes, and user workflows to the corresponding **MongoDB collections, BSON structures, and MQL (MongoDB Query Language) aggregation pipelines**.
 
 ---
 
-### Categories Page (`/categories` — `Categories.vue`)
+## 1. Architectural Concept Mapping
 
-| Section | Component | Required Tables | Key Fields | Query Pattern |
-|---|---|---|---|---|
-| Categories Grid | `CategoryCard.vue` | `categories`, `lessons` | All category fields + lesson count | `SELECT c.*, COUNT(l.id) as lesson_count FROM categories c LEFT JOIN lessons l ON c.id = l.category_id GROUP BY c.id ORDER BY c.sort_order` |
-
----
-
-### Category Details Page (`/categories/:slug` — `CategoryDetails.vue`)
-
-| Section | Component | Required Tables | Key Fields | Query Pattern |
-|---|---|---|---|---|
-| Category Banner | — | `categories` | `name`, `slug`, `description`, `color`, `icon` | `SELECT * FROM categories WHERE slug = :slug` |
-| Lesson Count | — | `lessons` | `COUNT(*)` | `SELECT COUNT(*) FROM lessons WHERE category_id = :category_id` |
-| Lessons Grid (sorted) | `LessonCard.vue` | `lessons`, `categories`, `bookmarks` | All lesson fields | `SELECT * FROM lessons WHERE category_id = :id ORDER BY [sort_field]` |
-| Sort Controls | — | — | — | `ORDER BY published_date DESC/ASC` or `ORDER BY lesson_number ASC` |
+| Frontend Concept | Previous SQL Model | MongoDB Data Model | Storage Approach |
+|---|---|---|---|
+| Sheikh Info | `sheikhs` + 3 child tables | `sheikhs` collection | Single document with embedded `qualifications` array, `booksTaught` array, and `socials` subdocument |
+| Categories | `categories` table | `series` collection | Standalone documents (`_id`, `title`, `description`, `sortOrder`, `status`) |
+| Books / Texts | `books` table | `books` collection | Standalone documents with `seriesId: ObjectId` reference |
+| Audio Lessons | `lessons` table | `lessons` collection | Standalone documents with `bookId: ObjectId` reference |
+| Favorites / Bookmarks | `bookmarks` table | `bookmarks` collection | Junction documents with `userId: ObjectId`, `lessonId: ObjectId` |
+| User Profile & Preferences | `users` table | `users` collection | Standalone documents with hashed passwords and theme preferences |
 
 ---
 
-### Lessons Page (`/lessons` — `Lessons.vue`)
+## 2. Page-Level Query Mappings
 
-| Section | Component | Required Tables | Key Fields | Query Pattern |
-|---|---|---|---|---|
-| Category Filter | `CategoryFilter.vue` | `categories` | `name`, `slug` | `SELECT id, name, slug FROM categories ORDER BY sort_order` |
-| Duration Filter | `CategoryFilter.vue` | `lessons` | `duration_seconds` | `WHERE duration_seconds < 2100 / BETWEEN 2100 AND 2700 / > 2700` |
-| Sort Controls | `CategoryFilter.vue` | — | — | `ORDER BY published_date DESC/ASC` or `ORDER BY lesson_number` |
-| Lessons Grid | `LessonCard.vue` | `lessons`, `categories`, `bookmarks` | All lesson fields, category `name` | Combined filters + sorting + optional pagination |
+### 2.1 Home Page (`/` — `Home.vue`)
 
-**Full Query Example:**
-```sql
-SELECT l.*, c.name as category_name, c.slug as category_slug
-FROM lessons l
-JOIN categories c ON l.category_id = c.id
-WHERE (:category = 'all' OR c.slug = :category)
-  AND (:duration = 'all' 
-       OR (:duration = 'short' AND l.duration_seconds < 2100)
-       OR (:duration = 'medium' AND l.duration_seconds BETWEEN 2100 AND 2700)
-       OR (:duration = 'long' AND l.duration_seconds > 2700))
-ORDER BY 
-  CASE WHEN :sort = 'newest' THEN l.published_date END DESC,
-  CASE WHEN :sort = 'oldest' THEN l.published_date END ASC,
-  CASE WHEN :sort = 'number' THEN l.lesson_number END ASC
+| Section | Component | Target Collection(s) | MongoDB Query / Aggregation Pipeline |
+|---|---|---|---|
+| Hero Section | `HeroSection.vue` | `sheikhs` | `db.sheikhs.findOne({})` |
+| Hero Stats | `HeroSection.vue` | `series`, `books`, `lessons` | `Promise.all([db.series.countDocuments({status: "published"}), db.books.countDocuments({status: "published"}), db.lessons.countDocuments({status: "published"})])` |
+| Series Grid | `CategoryCard.vue` | `series`, `books`, `lessons` | Aggregation with `$lookup` to compute book & lesson counts per series: <br/> `db.series.aggregate([{ $match: { status: "published" } }, { $lookup: { from: "books", localField: "_id", foreignField: "seriesId", as: "books" } }, { $sort: { sortOrder: 1 } }])` |
+| Featured Lesson | `FeaturedLesson.vue` | `lessons`, `books`, `series` | `db.lessons.aggregate([{ $match: { isFeatured: true, status: "published" } }, { $sort: { publishedDate: -1 } }, { $limit: 1 }, { $lookup: { from: "books", localField: "bookId", foreignField: "_id", as: "book" } }, { $unwind: "$book" }, { $lookup: { from: "series", localField: "book.seriesId", foreignField: "_id", as: "series" } }, { $unwind: "$series" }])` |
+| Latest Lessons | `LessonCard.vue` | `lessons`, `books` | `db.lessons.aggregate([{ $match: { status: "published" } }, { $sort: { publishedDate: -1 } }, { $limit: 6 }, { $lookup: { from: "books", localField: "bookId", foreignField: "_id", as: "book" } }, { $unwind: "$book" }])` |
+
+---
+
+### 2.2 Series / Categories Listing Page (`/categories` — `Categories.vue`)
+
+| Section | Target Collection(s) | MongoDB Query |
+|---|---|---|
+| All Series with Counts | `series`, `books`, `lessons` | `db.series.aggregate([{ $match: { status: "published" } }, { $sort: { sortOrder: 1 } }, { $lookup: { from: "books", localField: "_id", foreignField: "seriesId", as: "books" } }, { $project: { title: 1, description: 1, sortOrder: 1, bookCount: { $size: "$books" } } }])` |
+
+---
+
+### 2.3 Series Details Page (`/categories/:id` — `CategoryDetails.vue`)
+
+| Section | Target Collection(s) | MongoDB Query |
+|---|---|---|
+| Series Details | `series` | `db.series.findOne({ _id: ObjectId(seriesId), status: "published" })` |
+| Books in Series | `books` | `db.books.find({ seriesId: ObjectId(seriesId), status: "published" }).sort({ sortOrder: 1 })` |
+| Lessons under Series | `lessons`, `books` | `db.books.aggregate([{ $match: { seriesId: ObjectId(seriesId), status: "published" } }, { $lookup: { from: "lessons", localField: "_id", foreignField: "bookId", as: "lessons" } }, { $sort: { sortOrder: 1 } }])` |
+
+---
+
+### 2.4 Lessons Listing Page (`/lessons` — `Lessons.vue`)
+
+| Feature | Target Collection(s) | MongoDB Query Pattern |
+|---|---|---|
+| Filter by Book | `lessons` | `{ bookId: ObjectId(selectedBookId) }` |
+| Duration Filter | `lessons` | Short: `{ durationSeconds: { $lt: 2100 } }`<br/>Medium: `{ durationSeconds: { $gte: 2100, $lte: 2700 } }`<br/>Long: `{ durationSeconds: { $gt: 2700 } }` |
+| Sort Options | `lessons` | Newest: `.sort({ publishedDate: -1 })`<br/>Oldest: `.sort({ publishedDate: 1 })`<br/>Number: `.sort({ lessonNumber: 1 })` |
+
+**Combined Pipeline with Join to Book and Series:**
+```javascript
+const filter = { status: "published" };
+if (bookId) filter.bookId = ObjectId(bookId);
+if (duration === "short") filter.durationSeconds = { $lt: 2100 };
+if (duration === "medium") filter.durationSeconds = { $gte: 2100, $lte: 2700 };
+if (duration === "long") filter.durationSeconds = { $gt: 2700 };
+
+const sort = {};
+if (sortKey === "newest") sort.publishedDate = -1;
+if (sortKey === "oldest") sort.publishedDate = 1;
+if (sortKey === "number") sort.lessonNumber = 1;
+
+db.lessons.aggregate([
+  { $match: filter },
+  { $sort: sort },
+  {
+    $lookup: {
+      from: "books",
+      localField: "bookId",
+      foreignField: "_id",
+      as: "book"
+    }
+  },
+  { $unwind: "$book" },
+  {
+    $lookup: {
+      from: "series",
+      localField: "book.seriesId",
+      foreignField: "_id",
+      as: "series"
+    }
+  },
+  { $unwind: "$series" },
+  {
+    $project: {
+      title: 1,
+      lessonNumber: 1,
+      durationSeconds: 1,
+      audioUrl: 1,
+      publishedDate: 1,
+      isFeatured: 1,
+      bookTitle: "$book.title",
+      seriesTitle: "$series.title"
+    }
+  }
+]);
 ```
 
 ---
 
-### Lesson Details Page (`/lessons/:id` — `LessonDetails.vue`)
+### 2.5 Lesson Details Page (`/lessons/:id` — `LessonDetails.vue`)
 
-| Section | Component | Required Tables | Key Fields | Query Pattern |
-|---|---|---|---|---|
-| Lesson Meta | — | `lessons`, `categories` | `title`, `lesson_number`, `published_date`, `duration`, category `name` | `SELECT l.*, c.name, c.slug FROM lessons l JOIN categories c ON l.category_id = c.id WHERE l.id = :id` |
-| Sheikh Attribution | — | `sheikhs` | `name` | `SELECT name FROM sheikhs WHERE id = :sheikh_id` |
-| Audio Player | — | `lessons` | `audio_url`, `duration` | Included in main lesson query |
-| Download Link | — | `lessons` | `audio_url` | Included in main lesson query |
-| Bookmark Toggle | — | `bookmarks` | `user_id`, `lesson_id` | `SELECT COUNT(*) FROM bookmarks WHERE user_id = :uid AND lesson_id = :lid` |
-| Lesson Description | — | `lessons` | `description` | Included in main lesson query |
-| Prev/Next Nav | — | `lessons` | `id`, `title`, `category_id`, `lesson_number` | `SELECT * FROM lessons WHERE category_id = :cat_id AND lesson_number = :n-1 / :n+1` |
-
----
-
-### Bookmarks Page (`/bookmarks` — `Bookmarks.vue`)
-
-| Section | Component | Required Tables | Key Fields | Query Pattern |
-|---|---|---|---|---|
-| Bookmarked Lessons | `LessonCard.vue` | `bookmarks`, `lessons`, `categories` | All lesson fields + category name | `SELECT l.*, c.name FROM bookmarks b JOIN lessons l ON b.lesson_id = l.id JOIN categories c ON l.category_id = c.id WHERE b.user_id = :uid ORDER BY b.created_at DESC` |
-| Bookmark Count | — | `bookmarks` | `COUNT(*)` | `SELECT COUNT(*) FROM bookmarks WHERE user_id = :uid` |
-| Clear All | — | `bookmarks` | — | `DELETE FROM bookmarks WHERE user_id = :uid` |
-
----
-
-### About Page (`/about` — `About.vue`)
-
-| Section | Component | Required Tables | Key Fields | Query Pattern |
-|---|---|---|---|---|
-| Sheikh Profile | — | `sheikhs` | `name`, `title`, `bio`, `avatar_url` | `SELECT * FROM sheikhs WHERE id = :id` |
-| Social Links | — | `sheikh_socials` | `platform`, `url` | `SELECT * FROM sheikh_socials WHERE sheikh_id = :id ORDER BY sort_order` |
-| Qualifications | — | `sheikh_qualifications` | `qualification` | `SELECT * FROM sheikh_qualifications WHERE sheikh_id = :id ORDER BY sort_order` |
-| Books Taught | — | `sheikh_books` | `book_title` | `SELECT * FROM sheikh_books WHERE sheikh_id = :id ORDER BY sort_order` |
-| Teaching Method | — | `sheikhs` | `teaching_methodology` | Included in sheikh query |
-
----
-
-## Global Component Mapping
-
-### Navbar (`Navbar.vue`)
-
-| Feature | Required Tables | Query Pattern |
+| Component | Target Collection(s) | MongoDB Query Pattern |
 |---|---|---|
-| Bookmark count badge | `bookmarks` | `SELECT COUNT(*) FROM bookmarks WHERE user_id = :uid` |
-| Navigation links | None | Static routes |
-| Theme toggle | `users` (optional) | `UPDATE users SET theme_preference = :pref WHERE id = :uid` |
-
-### Search Modal (`SearchBar.vue`)
-
-| Feature | Required Tables | Key Fields | Query Pattern |
-|---|---|---|---|
-| Full-text search | `lessons`, `categories` | `title`, `description`, category `name` | `SELECT l.*, c.name FROM lessons l JOIN categories c ON l.category_id = c.id WHERE l.title LIKE '%:q%' OR l.description LIKE '%:q%' OR c.name LIKE '%:q%'` |
-| Play from search | `lessons` | `audio_url` | Included in search results |
-
-### Audio Player (`AudioPlayer.vue`)
-
-| Feature | Required Tables | Key Fields | Query Pattern |
-|---|---|---|---|
-| Display current lesson | `lessons`, `categories` | `title`, `lesson_number`, `audio_url`, category `name` | Data already loaded from lesson query, no additional DB call |
-
-### Footer (`Footer.vue`)
-
-| Feature | Required Tables | Query Pattern |
-|---|---|---|
-| Category links | `categories` | `SELECT slug, name FROM categories ORDER BY sort_order` |
-| Social media links | `sheikh_socials` | `SELECT platform, url FROM sheikh_socials ORDER BY sort_order` |
+| Lesson Meta | `lessons`, `books`, `series` | `db.lessons.aggregate([{ $match: { _id: ObjectId(id) } }, { $lookup: { from: "books", localField: "bookId", foreignField: "_id", as: "book" } }, { $unwind: "$book" }, { $lookup: { from: "series", localField: "book.seriesId", foreignField: "_id", as: "series" } }, { $unwind: "$series" }])` |
+| Sheikh Attribution | `sheikhs` | Profile data fetched once from `sheikhs` |
+| Previous / Next Lesson | `lessons` | Previous: `db.lessons.find({ bookId: currentBookId, lessonNumber: { $lt: currentNumber }, status: "published" }).sort({ lessonNumber: -1 }).limit(1)`<br/>Next: `db.lessons.find({ bookId: currentBookId, lessonNumber: { $gt: currentNumber }, status: "published" }).sort({ lessonNumber: 1 }).limit(1)` |
+| Bookmark Status | `bookmarks` | `db.bookmarks.countDocuments({ userId: currentUserId, lessonId: currentLessonId })` |
 
 ---
 
-## CRUD Operations Summary
+### 2.6 Bookmarks Page (`/bookmarks` — `Bookmarks.vue`)
 
-| Operation | Entity | Front-end Trigger | Proposed API |
-|---|---|---|---|
-| **Read** all categories | `categories` | Categories page, filter pills, footer, home | `GET /api/categories` |
-| **Read** category by slug | `categories` | Category details page | `GET /api/categories/:slug` |
-| **Read** all lessons (with filters) | `lessons` | Lessons page, search | `GET /api/lessons?category=&duration=&sort=&page=` |
-| **Read** lessons by category | `lessons` | Category details page | `GET /api/lessons?category=:slug` |
-| **Read** lesson by id | `lessons` | Lesson details page | `GET /api/lessons/:id` |
-| **Read** featured lesson | `lessons` | Home page | `GET /api/lessons/featured` |
-| **Read** sheikh profile | `sheikhs` + children | About page, hero, footer | `GET /api/sheikh/:id` |
-| **Create** bookmark | `bookmarks` | Heart icon click | `POST /api/bookmarks { lesson_id }` |
-| **Delete** bookmark | `bookmarks` | Heart icon click (toggle) | `DELETE /api/bookmarks/:lesson_id` |
-| **Delete** all bookmarks | `bookmarks` | Clear all button | `DELETE /api/bookmarks` |
-| **Read** user bookmarks | `bookmarks` | Bookmarks page, navbar badge | `GET /api/bookmarks` |
-| **Create/Read/Update** user | `users` | Auth flow (future) | `POST /api/auth/register`, `POST /api/auth/login` |
-| **Create/Update/Delete** lesson | `lessons` | Admin panel (future) | `POST/PUT/DELETE /api/admin/lessons` |
-| **Create/Update/Delete** category | `categories` | Admin panel (future) | `POST/PUT/DELETE /api/admin/categories` |
+| Action | Target Collection(s) | MongoDB Query |
+|---|---|---|
+| List User Bookmarks | `bookmarks`, `lessons`, `books` | `db.bookmarks.aggregate([{ $match: { userId: currentUserId } }, { $sort: { createdAt: -1 } }, { $lookup: { from: "lessons", localField: "lessonId", foreignField: "_id", as: "lesson" } }, { $unwind: "$lesson" }, { $lookup: { from: "books", localField: "lesson.bookId", foreignField: "_id", as: "book" } }, { $unwind: "$book" }])` |
+| Toggle Bookmark ON | `bookmarks` | `db.bookmarks.updateOne({ userId: currentUserId, lessonId: targetLessonId }, { $setOnInsert: { createdAt: new Date() } }, { upsert: true })` |
+| Toggle Bookmark OFF | `bookmarks` | `db.bookmarks.deleteOne({ userId: currentUserId, lessonId: targetLessonId })` |
+| Clear All Bookmarks | `bookmarks` | `db.bookmarks.deleteMany({ userId: currentUserId })` |
+
+---
+
+### 2.7 About Page (`/about` — `About.vue`)
+
+| Section | Target Collection | MongoDB Query |
+|---|---|---|
+| Complete Profile | `sheikhs` | `db.sheikhs.findOne({})` returns biography, qualifications, booksTaught, and socials in a single document read. |
+
+---
+
+### 2.8 Global Components
+
+| Component | Target Collection | MongoDB Query |
+|---|---|---|
+| **Navbar Bookmark Badge** | `bookmarks` | `db.bookmarks.countDocuments({ userId: currentUserId })` |
+| **Search Modal (Full-text)** | `lessons` | `db.lessons.find({ $text: { $search: query }, status: "published" }, { score: { $meta: "textScore" } }).sort({ score: { $meta: "textScore" } }).limit(10)` |
+| **Footer Links** | `series` | `db.series.find({ status: "published" }, { title: 1 }).sort({ sortOrder: 1 })` |

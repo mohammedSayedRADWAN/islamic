@@ -1,135 +1,140 @@
-# Entity-Relationship Diagram (ERD)
+# MongoDB Document Relationship Diagram & Architecture
 
-## Complete ERD
+## MongoDB Document Reference & Embedding Diagram
+
+The diagram below depicts the MongoDB document models, embedded subdocuments, and normalized `ObjectId` references.
 
 ```mermaid
-erDiagram
-    sheikhs {
-        INT id PK "Auto-increment"
-        VARCHAR name "NOT NULL, Full Arabic name"
-        VARCHAR title "NOT NULL, Academic title"
-        TEXT bio "Biography text"
-        VARCHAR avatar_url "Profile image path"
-        TEXT teaching_methodology "Teaching approach"
-        VARCHAR total_audio_hours "Display string"
-        TIMESTAMP created_at "NOT NULL, DEFAULT NOW"
-        TIMESTAMP updated_at "NOT NULL, DEFAULT NOW"
+classDiagram
+    class Sheikh {
+        ObjectId _id
+        String name
+        String title
+        String bio
+        String avatarUrl
+        String teachingMethodology
+        String totalAudioHours
+        Array~Qualification~ qualifications
+        Array~BookTaught~ booksTaught
+        Object socials
+        Date createdAt
+        Date updatedAt
     }
 
-    sheikh_qualifications {
-        INT id PK "Auto-increment"
-        INT sheikh_id FK "NOT NULL → sheikhs"
-        VARCHAR qualification "NOT NULL"
-        INT sort_order "NOT NULL, DEFAULT 0"
+    class Qualification {
+        String qualification
+        Int sortOrder
     }
 
-    sheikh_books {
-        INT id PK "Auto-increment"
-        INT sheikh_id FK "NOT NULL → sheikhs"
-        VARCHAR book_title "NOT NULL"
-        INT sort_order "NOT NULL, DEFAULT 0"
+    class BookTaught {
+        String bookTitle
+        Int sortOrder
     }
 
-    sheikh_socials {
-        INT id PK "Auto-increment"
-        INT sheikh_id FK "NOT NULL → sheikhs"
-        VARCHAR platform "NOT NULL (youtube, telegram, etc.)"
-        VARCHAR url "NOT NULL"
-        INT sort_order "NOT NULL, DEFAULT 0"
+    class Socials {
+        String youtube
+        String telegram
+        String twitter
+        String whatsapp
     }
 
-    categories {
-        INT id PK "Auto-increment"
-        VARCHAR name "NOT NULL, UNIQUE"
-        VARCHAR slug "NOT NULL, UNIQUE"
-        TEXT description "Category description"
-        VARCHAR icon "Emoji icon"
-        VARCHAR color "Hex color code"
-        INT sort_order "NOT NULL, DEFAULT 0"
-        TIMESTAMP created_at "NOT NULL, DEFAULT NOW"
-        TIMESTAMP updated_at "NOT NULL, DEFAULT NOW"
+    class Series {
+        ObjectId _id
+        String title
+        String description
+        Int sortOrder
+        String status
+        Date createdAt
+        Date updatedAt
     }
 
-    lessons {
-        INT id PK "Auto-increment"
-        INT category_id FK "NOT NULL → categories"
-        INT sheikh_id FK "NOT NULL → sheikhs"
-        VARCHAR title "NOT NULL"
-        TEXT description "Lesson summary"
-        INT lesson_number "NOT NULL"
-        VARCHAR duration "NOT NULL (MM:SS)"
-        INT duration_seconds "For filtering"
-        VARCHAR audio_url "NOT NULL"
-        BOOLEAN is_featured "NOT NULL, DEFAULT FALSE"
-        DATE published_date "NOT NULL"
-        TIMESTAMP created_at "NOT NULL, DEFAULT NOW"
-        TIMESTAMP updated_at "NOT NULL, DEFAULT NOW"
+    class Book {
+        ObjectId _id
+        ObjectId seriesId
+        String title
+        String description
+        String coverUrl
+        Int sortOrder
+        String status
+        Date createdAt
+        Date updatedAt
     }
 
-    users {
-        INT id PK "Auto-increment"
-        VARCHAR email "NOT NULL, UNIQUE"
-        VARCHAR password_hash "NOT NULL"
-        VARCHAR display_name "Optional"
-        ENUM role "NOT NULL, DEFAULT user"
-        ENUM theme_preference "NOT NULL, DEFAULT system"
-        BOOLEAN is_active "NOT NULL, DEFAULT TRUE"
-        TIMESTAMP created_at "NOT NULL, DEFAULT NOW"
-        TIMESTAMP updated_at "NOT NULL, DEFAULT NOW"
-        TIMESTAMP last_login_at "Nullable"
+    class Lesson {
+        ObjectId _id
+        ObjectId bookId
+        String title
+        String description
+        Int lessonNumber
+        Int durationSeconds
+        String audioUrl
+        Boolean isFeatured
+        Date publishedDate
+        Int sortOrder
+        String status
+        Date createdAt
+        Date updatedAt
     }
 
-    bookmarks {
-        INT id PK "Auto-increment"
-        INT user_id FK "NOT NULL → users"
-        INT lesson_id FK "NOT NULL → lessons"
-        TIMESTAMP created_at "NOT NULL, DEFAULT NOW"
+    class User {
+        ObjectId _id
+        String email
+        String passwordHash
+        String displayName
+        String role
+        String themePreference
+        Boolean isActive
+        Date lastLoginAt
+        Date createdAt
+        Date updatedAt
     }
 
-    sheikhs ||--o{ sheikh_qualifications : "has qualifications"
-    sheikhs ||--o{ sheikh_books : "has books taught"
-    sheikhs ||--o{ sheikh_socials : "has social links"
-    sheikhs ||--o{ lessons : "delivers"
-    categories ||--o{ lessons : "contains"
-    users ||--o{ bookmarks : "saves"
-    lessons ||--o{ bookmarks : "is bookmarked by"
+    class Bookmark {
+        ObjectId _id
+        ObjectId userId
+        ObjectId lessonId
+        Date createdAt
+    }
+
+    Sheikh *-- Qualification : embeds array
+    Sheikh *-- BookTaught : embeds array
+    Sheikh *-- Socials : embeds subdocument
+    Series "1" <-- "N" Book : references seriesId (ObjectId)
+    Book "1" <-- "N" Lesson : references bookId (ObjectId)
+    User "1" <-- "N" Bookmark : references userId (ObjectId)
+    Lesson "1" <-- "N" Bookmark : references lessonId (ObjectId)
 ```
 
-## Simplified Relationship Overview
+---
+
+## Simplified MongoDB Collection Architecture
 
 ```mermaid
 graph TB
-    subgraph "Sheikh Domain"
-        S["sheikhs"]
-        SQ["sheikh_qualifications"]
-        SB["sheikh_books"]
-        SS["sheikh_socials"]
+    subgraph "Instructor Profile Domain (Single Document with Embedded Data)"
+        S["Collection: sheikhs<br/>• qualifications: [...]<br/>• booksTaught: [...]<br/>• socials: {...}"]
     end
 
-    subgraph "Content Domain"
-        C["categories"]
-        L["lessons"]
+    subgraph "Content Hierarchy Domain (Normalized with ObjectId References)"
+        SE["Collection: series (Level 1: Fiqh, Hadith...)<br/>_id: ObjectId"]
+        BK["Collection: books (Level 2: Book of Purification...)<br/>seriesId: ObjectId"]
+        L["Collection: lessons (Level 3: Audio Lessons...)<br/>bookId: ObjectId"]
     end
 
-    subgraph "User Domain"
-        U["users"]
-        BK["bookmarks"]
+    subgraph "User & Engagement Domain"
+        U["Collection: users<br/>_id: ObjectId"]
+        BM["Collection: bookmarks<br/>userId: ObjectId, lessonId: ObjectId<br/>Unique Compound Index: {userId: 1, lessonId: 1}"]
     end
 
-    S -->|"1:N"| SQ
-    S -->|"1:N"| SB
-    S -->|"1:N"| SS
-    S -->|"1:N"| L
-    C -->|"1:N"| L
-    U -->|"1:N"| BK
-    L -->|"1:N"| BK
+    SE -->|"seriesId (1:N)"| BK
+    BK -->|"bookId (1:N)"| L
+    U -->|"userId (1:N)"| BM
+    L -->|"lessonId (1:N)"| BM
 
     style S fill:#2E7D32,color:#fff
-    style C fill:#1565C0,color:#fff
+    style SE fill:#1565C0,color:#fff
+    style BK fill:#0277BD,color:#fff
     style L fill:#E65100,color:#fff
     style U fill:#7B1FA2,color:#fff
-    style BK fill:#C62828,color:#fff
-    style SQ fill:#388E3C,color:#fff
-    style SB fill:#388E3C,color:#fff
-    style SS fill:#388E3C,color:#fff
+    style BM fill:#C62828,color:#fff
 ```

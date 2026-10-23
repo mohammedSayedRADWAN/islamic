@@ -1,133 +1,100 @@
-# Assumptions, Unresolved Questions & Potential Issues
+# MongoDB Assumptions, Integrity Strategies & Open Questions
 
 ---
 
-## Assumptions
+## 1. Assumptions & Design Rationales
 
-### A1 — User Authentication
-**Assumption:** A user authentication system (login/register) will be needed if bookmarks are to be persisted server-side.  
-**Basis:** The current front-end stores bookmarks in `localStorage`, which is anonymous and device-specific. The proposed `users` and `bookmarks` tables assume user accounts will be introduced.  
-**Impact:** If no authentication is planned, the `users` table and `bookmarks` table can be deferred, and bookmarks can continue using localStorage.
+### A1 — Hierarchical Content Model: Series → Books → Lessons
+**Assumption:** The core curriculum is structured into three discrete collections:
+1. `series` (Curriculum domain: Fiqh, Hadith, etc.)
+2. `books` (Specific study texts: Book of Purification, etc.)
+3. `lessons` (Individual audio recordings)  
+**Basis:** Lessons belong directly to books without an intermediate chapter collection. Unbounded lesson arrays are not embedded inside books to ensure efficient indexing, avoid hitting the 16MB BSON document limit, and support granular bookmarking.
 
-### A2 — Single Sheikh (for now)
-**Assumption:** Although the current site is built for a single sheikh (الشيخ د. عمر العربي), the schema supports multiple sheikhs for forward compatibility.  
-**Basis:** The static data has a single `sheikhInfo` object. However, making `sheikh_id` a foreign key in `lessons` costs nothing and avoids a future migration.  
-**Impact:** Minimal. If strictly single-sheikh, the `sheikh_id` FK on `lessons` could be removed, but this is not recommended.
+### A2 — Sheikh Profile Consolidation (Embedding)
+**Assumption:** The platform is dedicated to a single instructor (الشيخ د. عمر العربي). Therefore, creating 4 separate collections for qualifications, books taught, and socials is anti-pattern in MongoDB.  
+**Basis:** Consolidating qualifications and books taught into embedded arrays and social channels into an embedded subdocument within the `sheikhs` collection enables single-read retrieval on the About page and footer.
 
-### A3 — Admin Role for Content Management
-**Assumption:** An `admin` role will be needed to manage lessons, categories, and sheikh profiles via a future admin panel or CMS.  
-**Basis:** There is no admin panel in the current front-end. However, content (lessons, categories) must be managed somehow. The `role` field on `users` accommodates this.  
-**Impact:** If no admin panel is planned, the `role` field can default to `'user'` and the admin functionality can be added later.
+### A3 — Mapping `categories` to `series`
+**Assumption:** The previous `categories` table is replaced by the `series` collection.  
+**Basis:** Fiqh, Hadith, Tafsir, and Tawheed represent the top-level series of the platform. Retaining both would create duplicate, overlapping concepts.
 
-### A4 — Audio Files Stored Externally
-**Assumption:** Audio files are stored as static assets or on an external CDN/host. The database stores only the URL reference, not the binary file.  
-**Basis:** The front-end references both local (`/assets/audio/1.mp3`) and remote (`https://download.quranicaudio.com/...`) audio URLs.  
-**Impact:** No binary/blob storage is needed in the database.
+### A4 — Bookmarks Modeled as a Junction Collection
+**Assumption:** Storing bookmarks as a dedicated collection (`bookmarks`) rather than an embedded array in the `users` document.  
+**Basis:** If an active user bookmarks thousands of lessons, embedding an unbounded array of `ObjectId`s inside the user document causes unbounded document growth and requires atomic `$push`/`$pull` operations. A dedicated collection with a unique compound index `{ userId: 1, lessonId: 1 }` scales cleanly and allows querying which users bookmarked a given lesson.
 
-### A5 — Duration Format
-**Assumption:** Lesson duration will be stored in both display format (`VARCHAR` "45:30") and computed seconds (`INT` 2730) for filtering efficiency.  
-**Basis:** The front-end parses "MM:SS" strings for display but also needs numeric comparison for the duration filter (short/medium/long).  
-**Impact:** The `duration_seconds` field must be computed and populated on data entry. A database trigger or application-level logic should handle this.
-
-### A6 — Lesson Numbers Are Per-Category
-**Assumption:** `lesson_number` is unique within each category, not globally unique.  
-**Basis:** The static data shows `lessonNumber: 1` in both Fiqh and Hadith categories. The `UNIQUE(category_id, lesson_number)` constraint enforces this.  
-**Impact:** Lesson numbering restarts for each category.
-
-### A7 — Featured Lessons
-**Assumption:** Multiple lessons can be marked as `is_featured = TRUE` simultaneously, but the front-end currently picks only the first one found.  
-**Basis:** The Home view uses `lessons.find(l => l.featured)` which returns the first match. Four lessons in static data are marked `featured: true`.  
-**Impact:** The front-end query should likely be `ORDER BY published_date DESC LIMIT 1` for the featured spotlight, or use a more explicit "featured_week" mechanism.
-
-### A8 — No Pagination Yet
-**Assumption:** Pagination will eventually be needed as the lesson count grows, but the current front-end does not implement it.  
-**Basis:** All 12 lessons are loaded at once from static data. The schema supports efficient pagination via indexed `published_date` and `id` fields.  
-**Impact:** API endpoints should implement `LIMIT/OFFSET` or cursor-based pagination. The schema is ready for this.
-
-### A9 — Search is Client-Side
-**Assumption:** Full-text search will move to the backend when data is no longer static.  
-**Basis:** The current search filters the static `lessons` array in-memory using `String.includes()`.  
-**Impact:** The schema includes a recommendation for `FULLTEXT INDEX` on `lessons(title, description)` or PostgreSQL `tsvector` for server-side search.
-
-### A10 — Badge CSS Class Is Derived
-**Assumption:** The `badgeClass` field from static data (e.g., `"badge-fiqh"`) is a purely presentational concern and should NOT be stored in the database.  
-**Basis:** It follows a predictable pattern: `badge-${category.slug}`. The front-end can derive this.  
-**Impact:** No data loss. The front-end must construct the badge class string from the category slug.
-
-### A11 — Category Name Denormalization
-**Assumption:** The `categoryName` field on lessons in static data (e.g., `"الفقه"`) is intentional denormalization for display convenience but should be retrieved via JOIN in the database.  
-**Basis:** Storing `categoryName` in the lessons table would create data duplication and risk inconsistency.  
-**Impact:** Lesson queries must JOIN with `categories` to obtain the category name. This is standard practice and costs negligible performance.
+### A5 — Lesson Numbering Scoped Per Book
+**Assumption:** `lessonNumber` restarts at 1 for every book and is enforced via a compound unique index:
+`db.lessons.createIndex({ bookId: 1, lessonNumber: 1 }, { unique: true })`.
 
 ---
 
-## Unresolved Questions
+## 2. Integrity & Deletion-Handling Strategy
 
-### Q1 — Will user authentication be implemented?
-**Context:** Bookmarks currently use localStorage. If the platform wants cross-device bookmark sync, user accounts are mandatory.  
-**Options:**
-- (a) Add full authentication (email/password) — `users` table as designed.
-- (b) Add social/OAuth authentication only — may need additional `oauth_providers` table.
-- (c) No authentication — remove `users` and `bookmarks` tables; keep localStorage.
+MongoDB does not automatically enforce foreign-key constraints, cascading deletes, or referential integrity. The application layer and database operational rules must enforce the following:
 
-### Q2 — Should listening history/progress be tracked?
-**Context:** The audio player tracks `currentTime` but does not persist playback position. Users who close the browser lose their position.  
-**Options:**
-- (a) Add a `listening_progress` table with `user_id`, `lesson_id`, `position_seconds`, `last_played_at`.
-- (b) Continue using client-side state only.
+### Deletion Policies:
 
-### Q3 — Are there plans for lesson series/playlists?
-**Context:** Lessons within a category are implicitly a series (numbered sequentially). But there is no explicit "series" or "playlist" concept.  
-**Options:**
-- (a) Add a `series` table if lessons should be grouped into formal series (e.g., "شرح كتاب الطهارة" as a multi-lesson series).
-- (b) Treat categories as the grouping mechanism (current approach).
+1. **Series Deletion (RESTRICT / ARCHIVE):**
+   - **Rule:** A series cannot be deleted if active books reference it.
+   - **Implementation:** The application executes `const bookCount = await db.books.countDocuments({ seriesId: id });`. If `bookCount > 0`, the delete operation is rejected with an HTTP 400 Bad Request error.
+   - **Recommended Approach:** Soft-deletion by updating `status: "archived"`.
 
-### Q4 — Should lessons have rich content (text notes, PDFs, key points)?
-**Context:** The Lesson Details page shows hardcoded "key points" (أبرز المحاور والفوائد) that are the same for every lesson. Real per-lesson notes are not stored.  
-**Options:**
-- (a) Add a `lesson_notes` or `lesson_points` table for per-lesson key takeaways.
-- (b) Add a `content_html` or `content_markdown` field to `lessons` for rich text.
-- (c) Keep the current generic points approach.
+2. **Book Deletion (RESTRICT / ARCHIVE):**
+   - **Rule:** A book cannot be deleted if active lessons reference it.
+   - **Implementation:** Check `await db.lessons.countDocuments({ bookId: id });`. If > 0, reject deletion.
 
-### Q5 — Multi-language support?
-**Context:** The site is entirely in Arabic. No i18n framework is used.  
-**Decision needed:** Is multi-language a future requirement? If yes, table structures for translations would be needed.
+3. **Lesson Deletion (CASCADE on Bookmarks):**
+   - **Rule:** When a lesson is permanently removed, all orphaned bookmarks referencing its `lessonId` must be purged.
+   - **Implementation:** Executed inside an atomic MongoDB session/transaction:
+     ```javascript
+     const session = client.startSession();
+     try {
+       await session.withTransaction(async () => {
+         await db.bookmarks.deleteMany({ lessonId: targetLessonId }, { session });
+         await db.lessons.deleteOne({ _id: targetLessonId }, { session });
+       });
+     } finally {
+       await session.endSession();
+     }
+     ```
 
-### Q6 — How should the "featured lesson of the week" be managed?
-**Context:** Currently, 4 out of 12 lessons are marked `featured: true`. The home page picks the first one.  
-**Options:**
-- (a) Keep `is_featured` as a boolean, with a business rule that only one should be true at a time.
-- (b) Add a `featured_at` timestamp to select the most recently featured lesson.
-- (c) Create a separate `site_settings` or `featured_content` table.
-
-### Q7 — Comments, ratings, or community features?
-**Context:** No interactive community features exist in the front-end. No comments, ratings, Q&A, or discussion sections.  
-**Decision needed:** If comments or ratings are planned, additional tables would be required.
+4. **User Deletion (CASCADE on Bookmarks):**
+   - **Rule:** Deleting a user must clean up their associated bookmarks:
+     ```javascript
+     await db.bookmarks.deleteMany({ userId: targetUserId });
+     await db.users.deleteOne({ _id: targetUserId });
+     ```
 
 ---
 
-## Potential Design Issues
+## 3. Server-Side Validation vs. Application-Level Validation
 
-### P1 — `total_audio_hours` in `sheikhs` Could Become Stale
-**Risk:** The `total_audio_hours` field is a denormalized display string. As new lessons are added, this value must be manually updated.  
-**Mitigation:** Either compute this value dynamically via `SUM(duration_seconds)` query, or use a scheduled job/trigger to update it.
+| Validation Rule | Enforced At | Mechanism |
+|---|---|---|
+| BSON Data Types (`ObjectId`, `string`, `int`, `date`, `bool`) | Database | `$jsonSchema` collection validator |
+| Required Fields | Database | `$jsonSchema` `required` array |
+| Status Enum (`'draft'`, `'published'`, `'archived'`) | Database | `$jsonSchema` `enum` |
+| Email Pattern Format | Database | `$jsonSchema` regex pattern |
+| Audio URL Format | Database | `$jsonSchema` regex pattern (`^https?://.+`) |
+| Non-negative integers (`lessonNumber >= 1`, `durationSeconds >= 0`) | Database | `$jsonSchema` `minimum` rule |
+| Unique Email | Database | Unique Index: `{ email: 1 }` |
+| Unique Lesson Number per Book | Database | Compound Unique Index: `{ bookId: 1, lessonNumber: 1 }` |
+| Single Bookmark per User/Lesson | Database | Compound Unique Index: `{ userId: 1, lessonId: 1 }` |
+| **Referential Integrity on Insert** (`bookId` / `seriesId` existence) | Application | Query check before insert |
+| **Password Hashing** (Argon2id/Bcrypt) | Application | Hash before write |
+| **Email Lowercasing & Sanitization** | Application | Pre-save normalization |
+| **Featured Lesson Limit** (single active featured spotlight) | Application | Transactional update |
 
-### P2 — No Soft Delete Mechanism
-**Risk:** All delete operations are hard deletes. If a lesson or category is accidentally deleted, the data is permanently lost.  
-**Mitigation:** Consider adding `deleted_at TIMESTAMP NULL` fields for soft deletion, or implement backup procedures.
+---
 
-### P3 — Audio URL Fragility
-**Risk:** Audio files referenced by URL may move, expire, or become unavailable (especially third-party URLs like `quranicaudio.com`).  
-**Mitigation:** Consider hosting all audio files on controlled infrastructure. Add a `is_audio_available` flag or health-check mechanism.
+## 4. Open / Unresolved Questions
 
-### P4 — No Versioning or Audit Trail
-**Risk:** Changes to lessons, categories, or sheikh info are not tracked. There is no way to see who changed what and when.  
-**Mitigation:** For an admin-managed system, consider an `audit_log` table tracking entity changes.
+### Q1 — Listening Progress & Resume Playback
+- **Context:** The audio player currently stores playback position in memory.
+- **Option A:** Add a `listeningProgress` collection referencing `userId` and `lessonId` with `progressSeconds` and `lastPlayedAt`.
+- **Option B:** Keep playback state client-side in `localStorage`.
 
-### P5 — ENUM Limitations
-**Risk:** `ENUM` types (`role`, `theme_preference`) are rigid. Adding new values requires a schema migration.  
-**Mitigation:** Alternatively, use `VARCHAR` with `CHECK` constraints, or a separate reference/lookup table.
-
-### P6 — No Rate Limiting or Abuse Prevention for Bookmarks
-**Risk:** Without server-side controls, a user (or bot) could create millions of bookmarks.  
-**Mitigation:** Implement server-side limits (e.g., max 500 bookmarks per user) and rate limiting at the API layer.
+### Q2 — Soft Deletion vs. Hard Deletion
+- **Context:** Hard-deleting content in production can break links and delete bookmarks.
+- **Recommendation:** Rely on `status: "archived"` across `series`, `books`, and `lessons`, filtering out archived content in public queries.

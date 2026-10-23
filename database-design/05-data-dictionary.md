@@ -1,208 +1,288 @@
-# Data Dictionary
+# MongoDB Data Dictionary & Sample BSON Documents
 
-Complete reference of every field in the database schema, organized by table.
-
----
-
-## Table: `sheikhs`
-
-**Purpose:** Stores instructor/sheikh profile information displayed on the About page and Hero section.
-
-| # | Field | Type | PK | FK | Unique | Not Null | Default | Description |
-|---|---|---|---|---|---|---|---|---|
-| 1 | `id` | `INT AUTO_INCREMENT` | ✅ | — | ✅ | ✅ | Auto | Primary key |
-| 2 | `name` | `VARCHAR(255)` | — | — | — | ✅ | — | Full name in Arabic (e.g., "الشيخ د. عمر العربي") |
-| 3 | `title` | `VARCHAR(255)` | — | — | — | ✅ | — | Academic/religious title (e.g., "أستاذ الفقه والسياسة الشرعية") |
-| 4 | `bio` | `TEXT` | — | — | — | — | `NULL` | Extended biography paragraph |
-| 5 | `avatar_url` | `VARCHAR(500)` | — | — | — | — | `NULL` | URL or relative path to the sheikh's profile photo |
-| 6 | `teaching_methodology` | `TEXT` | — | — | — | — | `NULL` | Description of teaching philosophy and approach |
-| 7 | `total_audio_hours` | `VARCHAR(50)` | — | — | — | — | `NULL` | Display label for total audio content (e.g., "48 ساعة صوتية") |
-| 8 | `created_at` | `TIMESTAMP` | — | — | — | ✅ | `CURRENT_TIMESTAMP` | Record creation time |
-| 9 | `updated_at` | `TIMESTAMP` | — | — | — | ✅ | `CURRENT_TIMESTAMP` | Last modification time |
-
-**Sample Row:**
-```
-id=1, name="الشيخ د. عمر العربي", title="أستاذ الفقه والسياسة الشرعية", 
-bio="عالم وباحث شرعي، له أكثر من عشرين سنة...", avatar_url="/assets/portofolio.jpeg",
-teaching_methodology="يعتمد الشيخ في دروشه على المنهج العلمي التأصيلي...",
-total_audio_hours="48 ساعة صوتية"
-```
+This data dictionary provides full field specifications, BSON data types, constraints, and realistic sample BSON documents following the exact hierarchy:
+**Series (Fiqh) → Book (Book of Purification) → Audio Lessons (Lesson 1 & Lesson 2)**.
 
 ---
 
-## Table: `sheikh_qualifications`
+## 1. Collection: `sheikhs`
 
-**Purpose:** Stores the academic credentials and professional roles of each sheikh.
+**Description:** Instructor profile with embedded arrays for qualifications and books taught, plus an embedded object for social media links.
 
-| # | Field | Type | PK | FK | Unique | Not Null | Default | Description |
-|---|---|---|---|---|---|---|---|---|
-| 1 | `id` | `INT AUTO_INCREMENT` | ✅ | — | ✅ | ✅ | Auto | Primary key |
-| 2 | `sheikh_id` | `INT` | — | ✅ `sheikhs(id)` | — | ✅ | — | References the parent sheikh |
-| 3 | `qualification` | `VARCHAR(500)` | — | — | — | ✅ | — | Qualification text (e.g., "ليسانس الشريعه الازهر") |
-| 4 | `sort_order` | `INT` | — | — | — | ✅ | `0` | Controls display order (ascending) |
+| Field | BSON Type | Required | Description |
+|---|---|---|---|
+| `_id` | `ObjectId` | Yes | Unique MongoDB identifier |
+| `name` | `string` | Yes | Full Arabic name (الشيخ د. عمر العربي) |
+| `title` | `string` | Yes | Academic/religious title |
+| `bio` | `string` | No | Extended biography narrative |
+| `avatarUrl` | `string` | No | URL/path to profile avatar image |
+| `teachingMethodology` | `string` | No | Teaching methodology summary |
+| `totalAudioHours` | `string` | No | Display text for total hours (e.g., "48 ساعة صوتية") |
+| `qualifications` | `array` | Yes | Array of embedded credential objects: `{ qualification: string, sortOrder: int }` |
+| `booksTaught` | `array` | Yes | Array of embedded book objects: `{ bookTitle: string, sortOrder: int }` |
+| `socials` | `object` | Yes | Embedded subdocument containing platform URLs (`youtube`, `telegram`, `twitter`, `whatsapp`) |
+| `createdAt` | `date` | Yes | Document creation timestamp |
+| `updatedAt` | `date` | Yes | Last update timestamp |
 
-**Sample Rows (sheikh_id=1):**
-```
-(1, 1, "بكالوريوس تربيه ازهر", 0)
-(2, 1, "مدرس الدروس العلمية بالمسجد لأكثر من 15 عاماً", 1)
-(3, 1, "ليسانس الشريعه الازهر", 2)
-(4, 1, "دراسات عليا الفقه العام", 3)
-(5, 1, "ماجيستير الشريعه دار علوم", 4)
-```
-
----
-
-## Table: `sheikh_books`
-
-**Purpose:** Stores titles of Islamic texts/books that the sheikh teaches or explains.
-
-| # | Field | Type | PK | FK | Unique | Not Null | Default | Description |
-|---|---|---|---|---|---|---|---|---|
-| 1 | `id` | `INT AUTO_INCREMENT` | ✅ | — | ✅ | ✅ | Auto | Primary key |
-| 2 | `sheikh_id` | `INT` | — | ✅ `sheikhs(id)` | — | ✅ | — | References the parent sheikh |
-| 3 | `book_title` | `VARCHAR(500)` | — | — | — | ✅ | — | Title of the book/text (e.g., "شرح الأربعين النووية") |
-| 4 | `sort_order` | `INT` | — | — | — | ✅ | `0` | Controls display order (ascending) |
-
-**Sample Rows (sheikh_id=1):**
-```
-(1, 1, "شرح كتاب الطهارة والصلاة من عمدة الأحكام", 0)
-(2, 1, "شرح الأربعين النووية في أحاديث سيد البرية", 1)
-(3, 1, "تفسير سور المفصل وأحكام القرآن الكريم", 2)
-(4, 1, "كتاب التوحيد وحقيقة الإيمان والاعتقاد", 3)
+### Sample Document: `sheikhs`
+```json
+{
+  "_id": { "$oid": "661000000000000000000001" },
+  "name": "الشيخ د. عمر العربي",
+  "title": "أستاذ الفقه والسياسة الشرعية",
+  "bio": "عالم وباحث شرعي، له أكثر من عشرين سنة في تدريس العلوم الشرعية وإلقاء المحاضرات والدروس العلمية التأصيلية في المساجد والجامعات.",
+  "avatarUrl": "/assets/portofolio.jpeg",
+  "teachingMethodology": "يعتمد الشيخ في دروشه على المنهج العلمي التأصيلي القائم على شرح المتون المعتمدة مع ربط الأحكام بالواقع المعاصر.",
+  "totalAudioHours": "48 ساعة صوتية",
+  "qualifications": [
+    { "qualification": "بكالوريوس تربيه ازهر", "sortOrder": 0 },
+    { "qualification": "مدرس الدروس العلمية بالمسجد لأكثر من 15 عاماً", "sortOrder": 1 },
+    { "qualification": "ليسانس الشريعه الازهر", "sortOrder": 2 },
+    { "qualification": "دراسات عليا الفقه العام", "sortOrder": 3 },
+    { "qualification": "ماجيستير الشريعه دار علوم", "sortOrder": 4 }
+  ],
+  "booksTaught": [
+    { "bookTitle": "شرح كتاب الطهارة والصلاة من عمدة الأحكام", "sortOrder": 0 },
+    { "bookTitle": "شرح الأربعين النووية في أحاديث سيد البرية", "sortOrder": 1 },
+    { "bookTitle": "تفسير سور المفصل وأحكام القرآن الكريم", "sortOrder": 2 },
+    { "bookTitle": "كتاب التوحيد وحقيقة الإيمان والاعتقاد", "sortOrder": 3 }
+  ],
+  "socials": {
+    "youtube": "https://www.youtube.com/channel/UCFhHh9-lsLKolez3pKnGC0w",
+    "telegram": "https://t.me/omar_elarby",
+    "twitter": "https://x.com",
+    "whatsapp": "https://whatsapp.com"
+  },
+  "createdAt": { "$date": "2026-01-01T00:00:00.000Z" },
+  "updatedAt": { "$date": "2026-01-01T00:00:00.000Z" }
+}
 ```
 
 ---
 
-## Table: `sheikh_socials`
+## 2. Collection: `series`
 
-**Purpose:** Stores social media profile/channel links for each sheikh.
+**Description:** Hierarchy Level 1. Top-level Islamic science curricula or major subject series (e.g., الفقه, الحديث). Replaces previous SQL `categories`.
 
-| # | Field | Type | PK | FK | Unique | Not Null | Default | Description |
-|---|---|---|---|---|---|---|---|---|
-| 1 | `id` | `INT AUTO_INCREMENT` | ✅ | — | ✅ | ✅ | Auto | Primary key |
-| 2 | `sheikh_id` | `INT` | — | ✅ `sheikhs(id)` | — | ✅ | — | References the parent sheikh |
-| 3 | `platform` | `VARCHAR(50)` | — | — | — | ✅ | — | Platform identifier (youtube, telegram, twitter, whatsapp) |
-| 4 | `url` | `VARCHAR(500)` | — | — | — | ✅ | — | Full URL to the profile/channel |
-| 5 | `sort_order` | `INT` | — | — | — | ✅ | `0` | Controls display order (ascending) |
+| Field | BSON Type | Required | Description |
+|---|---|---|---|
+| `_id` | `ObjectId` | Yes | Unique identifier |
+| `title` | `string` | Yes | Series title in Arabic (e.g., "الفقه", "الحديث") |
+| `description` | `string` | No | Detailed series description |
+| `sortOrder` | `int` | Yes | Display sequence (default: 0) |
+| `status` | `string` | Yes | Lifecycle status: `"draft"`, `"published"`, `"archived"` |
+| `createdAt` | `date` | Yes | Creation timestamp |
+| `updatedAt` | `date` | Yes | Last update timestamp |
 
-**Composite Unique:** `UNIQUE(sheikh_id, platform)`
+### Sample Documents: `series`
 
-**Sample Rows (sheikh_id=1):**
+#### Series 1: Fiqh (الفقه)
+```json
+{
+  "_id": { "$oid": "662000000000000000000001" },
+  "title": "الفقه",
+  "description": "سلسلة دروس الفقه الإسلامي الميسر وبيان أحكام العبادات والمعاملات وفق المنهج التأصيلي المعتمد.",
+  "sortOrder": 0,
+  "status": "published",
+  "createdAt": { "$date": "2026-01-10T10:00:00.000Z" },
+  "updatedAt": { "$date": "2026-01-10T10:00:00.000Z" }
+}
 ```
-(1, 1, "youtube", "https://www.youtube.com/channel/UCFhHh9-lsLKolez3pKnGC0w", 0)
-(2, 1, "telegram", "https://t.me/omar_elarby", 1)
-(3, 1, "twitter", "https://x.com", 2)
-(4, 1, "whatsapp", "https://whatsapp.com", 3)
-```
 
----
-
-## Table: `categories`
-
-**Purpose:** Defines the Islamic science sections that group lessons (Fiqh, Hadith, Tafsir, Tawheed).
-
-| # | Field | Type | PK | FK | Unique | Not Null | Default | Description |
-|---|---|---|---|---|---|---|---|---|
-| 1 | `id` | `INT AUTO_INCREMENT` | ✅ | — | ✅ | ✅ | Auto | Primary key |
-| 2 | `name` | `VARCHAR(100)` | — | — | ✅ | ✅ | — | Arabic name (e.g., "الفقه", "الحديث") |
-| 3 | `slug` | `VARCHAR(100)` | — | — | ✅ | ✅ | — | URL-safe identifier (e.g., "fiqh", "hadith") |
-| 4 | `description` | `TEXT` | — | — | — | — | `NULL` | Category description in Arabic |
-| 5 | `icon` | `VARCHAR(10)` | — | — | — | — | `NULL` | Emoji character (e.g., "📖", "📜", "📚", "☝️") |
-| 6 | `color` | `VARCHAR(7)` | — | — | — | — | `NULL` | Hex color for UI theming (e.g., "#2E7D32") |
-| 7 | `sort_order` | `INT` | — | — | — | ✅ | `0` | Controls display order (ascending) |
-| 8 | `created_at` | `TIMESTAMP` | — | — | — | ✅ | `CURRENT_TIMESTAMP` | Record creation time |
-| 9 | `updated_at` | `TIMESTAMP` | — | — | — | ✅ | `CURRENT_TIMESTAMP` | Last modification time |
-
-**Sample Rows:**
-```
-(1, "الفقه", "fiqh", "دروس في أحكام العبادات والمعاملات...", "📖", "#2E7D32", 0)
-(2, "الحديث", "hadith", "شرح الأحاديث النبوية الصحيحة...", "📜", "#E65100", 1)
-(3, "التفسير", "tafsir", "تفسير آيات القرآن الكريم...", "📚", "#1565C0", 2)
-(4, "التوحيد", "tawheed", "دروس العقيدة الإسلامية...", "☝️", "#7B1FA2", 3)
+#### Series 2: Hadith (الحديث)
+```json
+{
+  "_id": { "$oid": "662000000000000000000002" },
+  "title": "الحديث",
+  "description": "سلسلة دراسة وشرح متون الحديث النبوي الشريف وتبيان فقه الأحاديث ودلالاتها الإيمانية والعملية.",
+  "sortOrder": 1,
+  "status": "published",
+  "createdAt": { "$date": "2026-01-10T10:00:00.000Z" },
+  "updatedAt": { "$date": "2026-01-10T10:00:00.000Z" }
+}
 ```
 
 ---
 
-## Table: `lessons`
+## 3. Collection: `books`
 
-**Purpose:** Core content table. Stores individual audio lectures with metadata.
+**Description:** Hierarchy Level 2. Classical or contemporary texts studied under a series. Contains audio lessons directly.
 
-| # | Field | Type | PK | FK | Unique | Not Null | Default | Description |
-|---|---|---|---|---|---|---|---|---|
-| 1 | `id` | `INT AUTO_INCREMENT` | ✅ | — | ✅ | ✅ | Auto | Primary key |
-| 2 | `category_id` | `INT` | — | ✅ `categories(id)` | — | ✅ | — | Parent category reference |
-| 3 | `sheikh_id` | `INT` | — | ✅ `sheikhs(id)` | — | ✅ | — | Instructor who gave the lesson |
-| 4 | `title` | `VARCHAR(500)` | — | — | — | ✅ | — | Full Arabic title (e.g., "شرح كتاب الطهارة - أحكام المياه وأنواعها") |
-| 5 | `description` | `TEXT` | — | — | — | — | `NULL` | Lesson summary/abstract |
-| 6 | `lesson_number` | `INT` | — | — | — | ✅ | — | Sequential number within its category (1, 2, 3, ...) |
-| 7 | `duration` | `VARCHAR(10)` | — | — | — | ✅ | — | Display duration string (e.g., "45:30") |
-| 8 | `duration_seconds` | `INT` | — | — | — | — | `NULL` | Duration in total seconds (e.g., 2730) for range filtering |
-| 9 | `audio_url` | `VARCHAR(1000)` | — | — | — | ✅ | — | URL to the MP3 audio file |
-| 10 | `is_featured` | `BOOLEAN` | — | — | — | ✅ | `FALSE` | Whether to show in the featured spotlight |
-| 11 | `published_date` | `DATE` | — | — | — | ✅ | — | Publication or recording date |
-| 12 | `created_at` | `TIMESTAMP` | — | — | — | ✅ | `CURRENT_TIMESTAMP` | Record creation time |
-| 13 | `updated_at` | `TIMESTAMP` | — | — | — | ✅ | `CURRENT_TIMESTAMP` | Last modification time |
+| Field | BSON Type | Required | Description |
+|---|---|---|---|
+| `_id` | `ObjectId` | Yes | Unique identifier |
+| `seriesId` | `ObjectId` | Yes | Reference to parent `series._id` |
+| `title` | `string` | Yes | Book title in Arabic (e.g., "كتاب الطهارة", "الأربعون النووية") |
+| `description` | `string` | No | Book introduction, outline, and syllabus |
+| `coverUrl` | `string` | No | Path or URL to book cover graphic |
+| `sortOrder` | `int` | Yes | Display sequence within the series (default: 0) |
+| `status` | `string` | Yes | Lifecycle status: `"draft"`, `"published"`, `"archived"` |
+| `createdAt` | `date` | Yes | Creation timestamp |
+| `updatedAt` | `date` | Yes | Last update timestamp |
 
-**Composite Unique:** `UNIQUE(category_id, lesson_number)`
+### Sample Documents: `books`
 
-**Sample Row:**
+#### Book 1: Book of Purification (كتاب الطهارة under Fiqh)
+```json
+{
+  "_id": { "$oid": "663000000000000000000001" },
+  "seriesId": { "$oid": "662000000000000000000001" },
+  "title": "كتاب الطهارة",
+  "description": "شرح أحكام الطهارة، أقسام المياه، النجاسات، الوضوء، والغسل من كتاب عمدة الأحكام.",
+  "coverUrl": "/assets/covers/tahara.jpg",
+  "sortOrder": 0,
+  "status": "published",
+  "createdAt": { "$date": "2026-01-15T12:00:00.000Z" },
+  "updatedAt": { "$date": "2026-01-15T12:00:00.000Z" }
+}
 ```
-(1, 1, 1, "شرح كتاب الطهارة - أحكام المياه وأنواعها", 
- "يتناول الشيخ في هذا الدرس بيان أقسام المياه...", 
- 1, "45:30", 2730, "/assets/audio/1.mp3", TRUE, "2026-08-20")
+
+#### Book 2: Book of Prayer (كتاب الصلاة under Fiqh)
+```json
+{
+  "_id": { "$oid": "663000000000000000000002" },
+  "seriesId": { "$oid": "662000000000000000000001" },
+  "title": "كتاب الصلاة",
+  "description": "شرح صفة الصلاة وشروطها وأركانها وسننها ومبطلاتها.",
+  "coverUrl": "/assets/covers/salah.jpg",
+  "sortOrder": 1,
+  "status": "published",
+  "createdAt": { "$date": "2026-01-15T12:00:00.000Z" },
+  "updatedAt": { "$date": "2026-01-15T12:00:00.000Z" }
+}
 ```
 
----
-
-## Table: `users`
-
-**Purpose:** User accounts for authentication and personalization (bookmarks, theme).
-
-| # | Field | Type | PK | FK | Unique | Not Null | Default | Description |
-|---|---|---|---|---|---|---|---|---|
-| 1 | `id` | `INT AUTO_INCREMENT` | ✅ | — | ✅ | ✅ | Auto | Primary key |
-| 2 | `email` | `VARCHAR(255)` | — | — | ✅ | ✅ | — | Login email address |
-| 3 | `password_hash` | `VARCHAR(255)` | — | — | — | ✅ | — | Securely hashed password (bcrypt/argon2) |
-| 4 | `display_name` | `VARCHAR(100)` | — | — | — | — | `NULL` | Optional display name |
-| 5 | `role` | `ENUM('user','admin')` | — | — | — | ✅ | `'user'` | Authorization role |
-| 6 | `theme_preference` | `ENUM('light','dark','system')` | — | — | — | ✅ | `'system'` | UI theme preference |
-| 7 | `is_active` | `BOOLEAN` | — | — | — | ✅ | `TRUE` | Whether the account is active |
-| 8 | `created_at` | `TIMESTAMP` | — | — | — | ✅ | `CURRENT_TIMESTAMP` | Registration timestamp |
-| 9 | `updated_at` | `TIMESTAMP` | — | — | — | ✅ | `CURRENT_TIMESTAMP` | Last profile update |
-| 10 | `last_login_at` | `TIMESTAMP` | — | — | — | — | `NULL` | Last successful login timestamp |
-
----
-
-## Table: `bookmarks`
-
-**Purpose:** Junction table that persists user's saved/favorited lessons.
-
-| # | Field | Type | PK | FK | Unique | Not Null | Default | Description |
-|---|---|---|---|---|---|---|---|---|
-| 1 | `id` | `INT AUTO_INCREMENT` | ✅ | — | ✅ | ✅ | Auto | Primary key |
-| 2 | `user_id` | `INT` | — | ✅ `users(id)` | — | ✅ | — | The user who bookmarked |
-| 3 | `lesson_id` | `INT` | — | ✅ `lessons(id)` | — | ✅ | — | The bookmarked lesson |
-| 4 | `created_at` | `TIMESTAMP` | — | — | — | ✅ | `CURRENT_TIMESTAMP` | When the bookmark was saved |
-
-**Composite Unique:** `UNIQUE(user_id, lesson_id)`
-
-**Sample Rows:**
-```
-(1, 1, 1, "2026-08-20 14:30:00")  -- User 1 bookmarked Lesson 1
-(2, 1, 5, "2026-08-21 09:15:00")  -- User 1 bookmarked Lesson 5
-(3, 2, 1, "2026-08-22 16:00:00")  -- User 2 bookmarked Lesson 1
+#### Book 3: Forty Hadith (الأربعون النووية under Hadith)
+```json
+{
+  "_id": { "$oid": "663000000000000000000003" },
+  "seriesId": { "$oid": "662000000000000000000002" },
+  "title": "الأربعون النووية",
+  "description": "شرح الأحاديث الأربعين النووية للإمام محيي الدين النووي رحمه الله في جوامع الكلم النبوي.",
+  "coverUrl": "/assets/covers/nawawiya.jpg",
+  "sortOrder": 0,
+  "status": "published",
+  "createdAt": { "$date": "2026-01-15T12:00:00.000Z" },
+  "updatedAt": { "$date": "2026-01-15T12:00:00.000Z" }
+}
 ```
 
 ---
 
-## Glossary of Data Types
+## 4. Collection: `lessons`
 
-| Type | Usage | Notes |
-|---|---|---|
-| `INT` / `SERIAL` | Numeric identifiers, counts | Auto-incrementing for PKs |
-| `VARCHAR(n)` | Short-to-medium text with known max length | Specified lengths based on content analysis |
-| `TEXT` | Long-form content (bios, descriptions) | No explicit length limit |
-| `BOOLEAN` | True/false flags | `is_featured`, `is_active` |
-| `DATE` | Calendar dates without time | `published_date` |
-| `TIMESTAMP` | Full date + time | Audit fields (`created_at`, `updated_at`) |
-| `ENUM(...)` | Constrained string values | `role`, `theme_preference` |
+**Description:** Hierarchy Level 3. Individual recorded audio lessons belonging directly to a book via `bookId`.
+
+| Field | BSON Type | Required | Description |
+|---|---|---|---|
+| `_id` | `ObjectId` | Yes | Unique identifier |
+| `bookId` | `ObjectId` | Yes | Reference to parent `books._id` |
+| `title` | `string` | Yes | Full Arabic lesson title |
+| `description` | `string` | No | Lesson summary, notes, and topics covered |
+| `lessonNumber` | `int` | Yes | Sequential number within the book (1, 2, ...) |
+| `durationSeconds` | `int` | Yes | Duration in seconds (e.g., 2730 for 45m 30s) |
+| `audioUrl` | `string` | Yes | URL to audio file (MP3 / CDN stream) |
+| `isFeatured` | `bool` | Yes | Flag for homepage spotlight (default: false) |
+| `publishedDate` | `date` | Yes | Publication/recording date |
+| `sortOrder` | `int` | Yes | Explicit sorting order within the book (default: 0) |
+| `status` | `string` | Yes | Lifecycle status: `"draft"`, `"published"`, `"archived"` |
+| `createdAt` | `date` | Yes | Creation timestamp |
+| `updatedAt` | `date` | Yes | Last update timestamp |
+
+### Sample Documents: `lessons`
+
+#### Lesson 1: Introduction to Purification (under Book of Purification)
+```json
+{
+  "_id": { "$oid": "665000000000000000000001" },
+  "bookId": { "$oid": "663000000000000000000001" },
+  "title": "الدرس 1: مقدمة كتاب الطهارة وفضل العلم",
+  "description": "بيان أهمية كتاب الطهارة في الفقه الإسلامي، ومكانة الطهارة كشرط لصحة الصلاة، مع مقدمة تأصيلية.",
+  "lessonNumber": 1,
+  "durationSeconds": 2730,
+  "audioUrl": "https://cdn.islamic-platform.com/audio/fiqh/tahara/01.mp3",
+  "isFeatured": true,
+  "publishedDate": { "$date": "2026-08-20T00:00:00.000Z" },
+  "sortOrder": 1,
+  "status": "published",
+  "createdAt": { "$date": "2026-08-20T10:00:00.000Z" },
+  "updatedAt": { "$date": "2026-08-20T10:00:00.000Z" }
+}
+```
+
+#### Lesson 2: Types of Water (under Book of Purification)
+```json
+{
+  "_id": { "$oid": "665000000000000000000002" },
+  "bookId": { "$oid": "663000000000000000000001" },
+  "title": "الدرس 2: أقسام المياه وأحكامها",
+  "description": "شرح أقسام المياه: الماء الطهور، والماء النجس، وضوابط تغير الماء بالشوائب وحكم الوضوء به.",
+  "lessonNumber": 2,
+  "durationSeconds": 2400,
+  "audioUrl": "https://cdn.islamic-platform.com/audio/fiqh/tahara/02.mp3",
+  "isFeatured": false,
+  "publishedDate": { "$date": "2026-08-25T00:00:00.000Z" },
+  "sortOrder": 2,
+  "status": "published",
+  "createdAt": { "$date": "2026-08-25T10:00:00.000Z" },
+  "updatedAt": { "$date": "2026-08-25T10:00:00.000Z" }
+}
+```
+
+---
+
+## 5. Collection: `users`
+
+**Description:** User authentication accounts, roles, and UI theme settings.
+
+| Field | BSON Type | Required | Description |
+|---|---|---|---|
+| `_id` | `ObjectId` | Yes | Unique identifier |
+| `email` | `string` | Yes | Email address (unique, normalized lowercase) |
+| `passwordHash` | `string` | Yes | Cryptographic hash (bcrypt or argon2) |
+| `displayName` | `string` | No | Nickname or profile name |
+| `role` | `string` | Yes | `"user"` or `"admin"` (default: `"user"`) |
+| `themePreference` | `string` | Yes | `"light"`, `"dark"`, or `"system"` (default: `"system"`) |
+| `isActive` | `bool` | Yes | Account status flag (default: true) |
+| `lastLoginAt` | `date` | No | Timestamp of most recent login |
+| `createdAt` | `date` | Yes | Account registration timestamp |
+| `updatedAt` | `date` | Yes | Last update timestamp |
+
+### Sample Document: `users`
+```json
+{
+  "_id": { "$oid": "664000000000000000000001" },
+  "email": "talib.ilm@example.com",
+  "passwordHash": "$2b$12$e8kZ1VnQ7U4eE7I9C5O0u.G0Y6A2w8p5b7d9f1h3j5l7n9p1r3t5v",
+  "displayName": "طالب علم",
+  "role": "user",
+  "themePreference": "dark",
+  "isActive": true,
+  "lastLoginAt": { "$date": "2026-10-22T18:30:00.000Z" },
+  "createdAt": { "$date": "2026-05-15T09:00:00.000Z" },
+  "updatedAt": { "$date": "2026-10-22T18:30:00.000Z" }
+}
+```
+
+---
+
+## 6. Collection: `bookmarks`
+
+**Description:** Junction collection for saved/favorited lessons.
+
+| Field | BSON Type | Required | Description |
+|---|---|---|---|
+| `_id` | `ObjectId` | Yes | Unique identifier |
+| `userId` | `ObjectId` | Yes | Reference to `users._id` |
+| `lessonId` | `ObjectId` | Yes | Reference to `lessons._id` |
+| `createdAt` | `date` | Yes | Bookmark creation timestamp |
+
+### Sample Document: `bookmarks`
+```json
+{
+  "_id": { "$oid": "666000000000000000000001" },
+  "userId": { "$oid": "664000000000000000000001" },
+  "lessonId": { "$oid": "665000000000000000000001" },
+  "createdAt": { "$date": "2026-10-22T19:00:00.000Z" }
+}
+```

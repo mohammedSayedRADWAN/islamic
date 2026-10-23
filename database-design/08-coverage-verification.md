@@ -1,102 +1,78 @@
-# Database Design — Coverage Verification Checklist
+# MongoDB Database Design — Coverage & Verification Checklist
 
-This document verifies that every front-end data point, feature, and workflow is covered by the proposed database schema.
+This document verifies that every front-end feature, data entity, workflow, and constraint is fully covered by the **MongoDB document data model**.
 
 ---
 
-## Static Data Coverage
+## 1. Static Data & Field Mapping Verification
 
-### `sheikhInfo` Object → Schema Coverage
+### `sheikhInfo` Profile → MongoDB Coverage
+- `name` → `sheikhs.name` (string) ✅
+- `title` → `sheikhs.title` (string) ✅
+- `bio` → `sheikhs.bio` (string) ✅
+- `avatar` → `sheikhs.avatarUrl` (string) ✅
+- `teachingMethodology` → `sheikhs.teachingMethodology` (string) ✅
+- `totalHours` → `sheikhs.totalAudioHours` (string) ✅
+- `qualifications` → `sheikhs.qualifications` (embedded array of objects) ✅
+- `booksTaught` → `sheikhs.booksTaught` (embedded array of objects) ✅
+- `socials` → `sheikhs.socials` (embedded object with platform URLs) ✅
 
-| Static Data Field | Mapped To | Covered? |
+### Categories Array → `series` Collection Coverage
+- `id` → `series._id` (`ObjectId`) ✅
+- `name` → `series.title` (string) ✅
+- `description` → `series.description` (string) ✅
+- `sortOrder` → `series.sortOrder` (int) ✅
+- `status` → `series.status` (string enum) ✅
+- `count` → Computed via aggregation `$lookup` or `$count` ✅
+
+### Books Domain → `books` Collection Coverage
+- `id` → `books._id` (`ObjectId`) ✅
+- `seriesId` → `books.seriesId` (`ObjectId`, references `series._id`) ✅
+- `title` → `books.title` (string) ✅
+- `description` → `books.description` (string) ✅
+- `coverUrl` → `books.coverUrl` (string) ✅
+- `sortOrder` → `books.sortOrder` (int) ✅
+- `status` → `books.status` (string enum) ✅
+
+### Lessons Array → `lessons` Collection Coverage
+- `id` → `lessons._id` (`ObjectId`) ✅
+- `bookId` → `lessons.bookId` (`ObjectId`, references `books._id`) ✅
+- `title` → `lessons.title` (string) ✅
+- `lessonNumber` → `lessons.lessonNumber` (int, scoped per book via compound unique index) ✅
+- `durationSeconds` → `lessons.durationSeconds` (int, non-negative) ✅
+- `audioUrl` → `lessons.audioUrl` (string, validated URL pattern) ✅
+- `isFeatured` → `lessons.isFeatured` (bool) ✅
+- `publishedDate` → `lessons.publishedDate` (BSON date) ✅
+- `sortOrder` → `lessons.sortOrder` (int) ✅
+- `status` → `lessons.status` (string enum) ✅
+
+---
+
+## 2. Requirement Checklist Verification
+
+| Requirement | Implementation Details | Status |
 |---|---|---|
-| `name` | `sheikhs.name` | ✅ |
-| `title` | `sheikhs.title` | ✅ |
-| `bio` | `sheikhs.bio` | ✅ |
-| `avatar` (empty string) | `sheikhs.avatar_url` | ✅ |
-| `totalLessons` (66) | Computed: `COUNT(*) FROM lessons` | ✅ |
-| `totalCategories` (4) | Computed: `COUNT(*) FROM categories` | ✅ |
-| `totalHours` ("48 ساعة صوتية") | `sheikhs.total_audio_hours` | ✅ |
-| `qualifications` (array of 5 strings) | `sheikh_qualifications` table | ✅ |
-| `booksTaught` (array of 4 strings) | `sheikh_books` table | ✅ |
-| `socials.youtube` | `sheikh_socials` (platform="youtube") | ✅ |
-| `socials.telegram` | `sheikh_socials` (platform="telegram") | ✅ |
-| `socials.twitter` | `sheikh_socials` (platform="twitter") | ✅ |
-| `socials.whatsapp` | `sheikh_socials` (platform="whatsapp") | ✅ |
-
-### `categories` Array → Schema Coverage
-
-| Static Data Field | Mapped To | Covered? |
-|---|---|---|
-| `id` | `categories.id` | ✅ |
-| `name` | `categories.name` | ✅ |
-| `slug` | `categories.slug` | ✅ |
-| `description` | `categories.description` | ✅ |
-| `icon` | `categories.icon` | ✅ |
-| `badgeClass` | Derived from slug (`badge-${slug}`) | ✅ (not stored, computed) |
-| `count` | Computed: `COUNT(*) FROM lessons WHERE category_id = ?` | ✅ (not stored, computed) |
-| `color` | `categories.color` | ✅ |
-
-### `lessons` Array → Schema Coverage
-
-| Static Data Field | Mapped To | Covered? |
-|---|---|---|
-| `id` | `lessons.id` | ✅ |
-| `title` | `lessons.title` | ✅ |
-| `category` (slug) | `lessons.category_id` → JOIN `categories.slug` | ✅ |
-| `categoryName` | JOIN `categories.name` | ✅ (not stored, JOINed) |
-| `badgeClass` | Derived from category slug | ✅ (not stored, computed) |
-| `lessonNumber` | `lessons.lesson_number` | ✅ |
-| `duration` | `lessons.duration` | ✅ |
-| `date` | `lessons.published_date` | ✅ |
-| `description` | `lessons.description` | ✅ |
-| `audioUrl` | `lessons.audio_url` | ✅ |
-| `featured` | `lessons.is_featured` | ✅ |
+| **MongoDB collections & BSON types** | 6 collections specified with native BSON types (`ObjectId`, `string`, `int`, `date`, `bool`) | ✅ Verified |
+| **Preserve hierarchy: series → books → lessons** | `series` (Level 1) → `books` (Level 2) → `lessons` (Level 3) via normalized `ObjectId` references | ✅ Verified |
+| **Use `ObjectId` references** | `_id`, `seriesId`, `bookId`, `userId`, `lessonId` all typed as `ObjectId` | ✅ Verified |
+| **Separate content collections** | `series`, `books`, and `lessons` are discrete collections. No unbounded embedding of lessons inside books | ✅ Verified |
+| **Unique bookmarks per user/lesson** | Compound unique index `db.bookmarks.createIndex({ userId: 1, lessonId: 1 }, { unique: true })` | ✅ Verified |
+| **MongoDB index definitions** | Full `db.collection.createIndex()` syntax defined for all frequent queries and sorts | ✅ Verified |
+| **Validation strategy** | `$jsonSchema` validators for BSON types, enums, regex patterns, and numeric ranges + application-level rules | ✅ Verified |
+| **Reference & deletion handling** | Documented RESTRICT vs. CASCADE policies, transaction usage, and soft-delete recommendations | ✅ Verified |
+| **Single-sheikh profile simplification** | Consolidated 4 previous tables into 1 `sheikhs` collection with embedded arrays and subdocuments | ✅ Verified |
+| **Preserve existing features** | Auth, roles, bookmarks, audio playback, featured spotlights, and admin content management preserved | ✅ Verified |
+| **Realistic sample documents** | Included in [05-data-dictionary.md](file:///c:/Users/AcTiVE/Desktop/islamic/database-design/05-data-dictionary.md) following Fiqh → Book of Purification → Audio Lessons | ✅ Verified |
+| **Updated ERD and diagrams** | Converted to MongoDB document references and embedding diagram in [03-erd-diagram.md](file:///c:/Users/AcTiVE/Desktop/islamic/database-design/03-erd-diagram.md) | ✅ Verified |
 
 ---
 
-## Feature Coverage
+## 3. Final Architecture Summary
 
-| # | Feature | Covered By Tables | Status |
-|---|---|---|---|
-| F1 | Sheikh Profile | `sheikhs`, `sheikh_qualifications`, `sheikh_books`, `sheikh_socials` | ✅ |
-| F2 | Categories Listing | `categories` | ✅ |
-| F3 | Lessons Listing & Detail | `lessons`, `categories` | ✅ |
-| F4 | Audio Playback | `lessons.audio_url`, `lessons.duration` | ✅ |
-| F5 | Bookmarks | `bookmarks`, `users`, `lessons` | ✅ |
-| F6 | Search | `lessons.title`, `lessons.description`, `categories.name` + FULLTEXT index | ✅ |
-| F7 | Filtering & Sorting | `lessons.category_id`, `lessons.duration_seconds`, `lessons.published_date`, `lessons.lesson_number` | ✅ |
-| F8 | Theme Preference | `users.theme_preference` | ✅ |
-| F9 | Prev/Next Navigation | `lessons.category_id`, `lessons.lesson_number` + UNIQUE constraint | ✅ |
-| F10 | Statistics Display | Computed aggregates from `lessons` and `categories` | ✅ |
-
----
-
-## Route Coverage
-
-| Route | Page | Tables Needed | Status |
-|---|---|---|---|
-| `/` | Home | `sheikhs`, `categories`, `lessons` | ✅ |
-| `/categories` | Categories | `categories`, `lessons` (count) | ✅ |
-| `/categories/:slug` | Category Details | `categories`, `lessons` | ✅ |
-| `/lessons` | Lessons | `lessons`, `categories` | ✅ |
-| `/lessons/:id` | Lesson Details | `lessons`, `categories`, `sheikhs`, `bookmarks` | ✅ |
-| `/bookmarks` | Bookmarks | `bookmarks`, `lessons`, `categories` | ✅ |
-| `/about` | About | `sheikhs`, `sheikh_qualifications`, `sheikh_books`, `sheikh_socials` | ✅ |
-
----
-
-## Normalization Verification
-
-| Principle | Applied? | Details |
-|---|---|---|
-| **1NF** — Atomic values, no repeating groups | ✅ | Qualifications, books, and socials are separate tables (not arrays in a single column) |
-| **2NF** — No partial dependencies | ✅ | All non-key fields depend on the full primary key |
-| **3NF** — No transitive dependencies | ✅ | `categoryName` and `badgeClass` are not stored in `lessons` (derived from JOIN). `count` is not stored in `categories` (computed). |
-| **No data duplication** | ✅ | Category info is stored once in `categories`, referenced by FK in `lessons` |
-
----
-
-## Final Verdict
-
-**All front-end features, data points, routes, and workflows are fully covered by the proposed 8-table schema.** No gaps found.
+The complete MongoDB data architecture consists of **6 cohesive collections**:
+1. `sheikhs`: Single-instructor profile with embedded arrays (`qualifications`, `booksTaught`) and subdocument (`socials`).
+2. `series`: Top-level curriculum series (Level 1).
+3. `books`: Study books referencing `seriesId` (Level 2).
+4. `lessons`: Audio lectures referencing `bookId` with audio URLs and durations (Level 3).
+5. `users`: Authentication accounts and preferences.
+6. `bookmarks`: User saved lessons junction with compound unique index on `{ userId: 1, lessonId: 1 }`.
